@@ -35,12 +35,14 @@ def align_images_hough(img1, img2_path):
     edges = cv.Canny(img1, 50, 150, apertureSize=3)
 
     # Traformada de linha de Hough
-    lines = cv.HoughLines(edges, 1, np.pi / 180, 200)
+    lines = cv.HoughLines(edges, 1, np.pi / 180, 100)
+    if lines is None:
+        sys.exit("Não foi possível encontrar linhas na imagem.")
     
     # Pegar angulo mais frequente das linhas
     angles = []
     for line in lines:
-        theta = line[0]
+        theta = line[0][1]
         angle = np.rad2deg(theta)
         angles.append(angle)
     angle = round(np.median(angles)) - 90
