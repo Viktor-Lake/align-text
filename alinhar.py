@@ -1,26 +1,54 @@
+from ast import arg
+from platform import python_branch
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
+from scipy.ndimage import rotate
 import argparse
 import sys
 
-def objetive_function(img1, img2):
-    return np.sum((img1 - img2) ** 2)
+def objetive_function(profile, n):
+    result = 0
+    for i in range(n-1):
+        result += (profile[i] - profile[i+1])**2
+    return result
 
 def align_images_horizontal_projection(img1, img2_path):
     n = img1.shape[0]
-    profile = []
-    for _ in range(n):
-        profile.append(np.sum(img1, axis=1))
-    value = [0]*180
-    for angle in range(-90, 90):
-        value[angle+90].append(objetive_function(profile, np.roll(profile, 1)))
-    angle = np.argmax(value) - 90
+    profiles = np.zeros((180, n))
+    angle_results = np.zeros(180)
+    for ang in range(180):
+        img_angle = rotate(img1, ang-90, reshape=False)
+        for i in range(n):
+            profiles[ang][i] = np.sum(img_angle[i])
+        angle_results[ang] = objetive_function(profiles[ang], n)
+    angle = np.argmax(angle_results) - 90
+
+    # Write image rotated
+    img_rotated = rotate(img1, angle, reshape=False)
     print(angle)
+    cv.imwrite(img2_path, img_rotated)
     return 0
 
 def align_images_hough(img1, img2_path):
+    # Detecção de bordas
+    edges = cv.Canny(img1, 50, 150, apertureSize=3)
 
+    # Traformada de linha de Hough
+    lines = cv.HoughLines(edges, 1, np.pi / 180, 200)
+    
+    # Pegar angulo mais frequente das linhas
+    angles = []
+    for line in lines:
+        theta = line[0]
+        angle = np.rad2deg(theta)
+        angles.append(angle)
+    angle = round(np.median(angles)) - 90
+    print(angle)
+
+    # Rotacionar imagem
+    img_rotated = rotate(img1, angle, reshape=False)
+    cv.imwrite(img2_path, img_rotated)
     return 0
 
 def main():
